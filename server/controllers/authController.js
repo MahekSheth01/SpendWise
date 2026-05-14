@@ -74,29 +74,38 @@ exports.loginUser = async (req, res) => {
 exports.googleLogin = async (req, res) => {
     const { credential } = req.body;
 
+    console.log('Google Login attempt received');
+    console.log('GOOGLE_CLIENT_ID set:', !!process.env.GOOGLE_CLIENT_ID);
+    console.log('Credential received:', !!credential);
+
+    if (!credential) {
+        return res.status(400).json({ message: 'No credential provided' });
+    }
+
     try {
         const ticket = await client.verifyIdToken({
             idToken: credential,
             audience: process.env.GOOGLE_CLIENT_ID,
         });
 
-        const { name, email, picture } = ticket.getPayload();
+        const payload = ticket.getPayload();
+        console.log('Token verified successfully for:', payload.email);
+
+        const { name, email, picture } = payload;
 
         let user = await User.findOne({ email });
 
         if (!user) {
-            // Create user if they don't exist
             user = new User({
                 name,
                 email,
-                isVerified: true, // Google users are pre-verified
-                // No password for Google users
+                isVerified: true,
             });
             await user.save();
         }
 
-        const payload = { user: { id: user.id } };
-        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' }, (err, token) => {
+        const jwtPayload = { user: { id: user.id } };
+        jwt.sign(jwtPayload, process.env.JWT_SECRET, { expiresIn: '24h' }, (err, token) => {
             if (err) throw err;
             res.json({
                 token,
@@ -104,13 +113,14 @@ exports.googleLogin = async (req, res) => {
                     id: user.id,
                     name: user.name,
                     email: user.email,
-                    picture: picture // Optional: return profile picture
+                    picture: picture
                 }
             });
         });
     } catch (err) {
-        console.error('Google Login Error:', err);
-        res.status(400).json({ message: 'Google authentication failed' });
+        console.error('Google Login Error message:', err.message);
+        console.error('Google Login Error stack:', err.stack);
+        res.status(400).json({ message: err.message || 'Google authentication failed' });
     }
 };
 
