@@ -49,6 +49,9 @@ export function Login() {
     };
 
     const handleGoogleSuccess = async (credentialResponse) => {
+        console.log('Google Success callback fired');
+        console.log('Credential response:', credentialResponse);
+        console.log('Has credential:', !!credentialResponse?.credential);
         setLoading(true);
         setError('');
         try {
@@ -58,13 +61,15 @@ export function Login() {
             localStorage.setItem('token', res.data.token);
             navigate('/dashboard');
         } catch (err) {
+            console.error('Backend error:', err.response?.data);
             setError(err.response?.data?.message || 'Google authentication failed');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleGoogleError = () => {
+    const handleGoogleError = (error) => {
+        console.error('Google Error callback fired:', error);
         setError('Google Sign In was unsuccessful. Try again later');
     };
 
